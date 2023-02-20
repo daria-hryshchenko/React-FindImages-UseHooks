@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { Wrapper } from './App.module';
 import Modal from './Modal/Modal';
 import { Api } from '../api/api';
@@ -8,83 +8,63 @@ import ImageGallery from './ImageGallery/ImageGallery';
 import Loader from './Loader/Loader';
 import Button from './Button/Button';
 
-export class App extends Component {
-  state = {
-    images: [],
-    isLoading: false,
-    error: null,
-    inputValue: '',
-    page: 1,
-    status: 'idle',
-    loadMore: null,
-    largeImageUrl: '',
-    showModal: false,
+export default function App() {
+  const [images, setImages] = useState([]);
+  const [error, setError] = useState(null);
+  const [inputValue, setInputValue] = useState('');
+  const [page, setPage] = useState(1);
+  const [status, setStatus] = useState('idle');
+  const [loadMore, setLoadMore] = useState(null);
+  const [largeImageUrl, setLargeImageUrl] = useState('');
+  const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    if (!inputValue) return;
+
+    setStatus('loading');
+    setLoadMore(null);
+
+    Api(inputValue, page)
+      .then(e => {
+        setImages(prevState => [...prevState, ...e.hits]);
+        setStatus('idle');
+        setLoadMore(12 - e.hits.length);
+      })
+      .catch(error => setError(error.message));
+  }, [page, inputValue]);
+
+  const getInputValue = fetchValue => {
+    setInputValue(fetchValue);
+    setPage(1);
+    setImages([]);
+    setLoadMore(null);
   };
 
-  componentDidUpdate(_, prevState) {
-    const { page, inputValue } = this.state;
-
-    if (
-      prevState.page !== this.state.page ||
-      prevState.inputValue !== this.state.inputValue
-    ) {
-      this.setState({ status: 'loading' });
-
-      Api(inputValue, page)
-        .then(event =>
-          this.setState(prevState => ({
-            images: [...prevState.images, ...event.hits],
-            loadMore: 12 - event.hits.length,
-          }))
-        )
-        .catch(error => console.log(error))
-        .finally(() => this.setState({ status: 'idle' }));
-    }
-  }
-
-  getInputValue = fetchValue => {
-    this.setState({
-      inputValue: fetchValue,
-      page: 1,
-      images: [],
-      loadMore: null,
-    });
+  const handleLoalMore = () => {
+    setPage(prevState => prevState.page + 1);
   };
 
-  handleLoalMore = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-    }));
+  const handleLargeImageUrl = imgUtl => {
+    setLargeImageUrl(imgUtl);
+    toggleModal();
   };
 
-  handleLargeImageUrl = imgUtl => {
-    this.setState({ largeImageUrl: imgUtl });
-    this.setState({ showModal: true });
+  const toggleModal = () => {
+    setShowModal(prevState => !prevState);
   };
 
-  toggleModal = () => {
-    this.setState(({ showModal }) => ({
-      showModal: false,
-    }));
-  };
+  return (
+    <Wrapper>
+      <GlobalStyle />
+      <Searchbar onSubmit={getInputValue} />
+      <ImageGallery images={images} onClick={handleLargeImageUrl} />
 
-  render() {
-    const { images, status, loadMore, showModal, largeImageUrl } = this.state;
-    return (
-      <Wrapper>
-        <GlobalStyle />
-        <Searchbar onSubmit={this.getInputValue} />
-        <ImageGallery images={images} onClick={this.handleLargeImageUrl} />
-        {status === 'loading' && <Loader />}
-        {showModal && (
-          <Modal
-            imgUrl={largeImageUrl}
-            onClose={this.toggleModal}
-            status={status}
-          />
-        )}
-        {loadMore === 0 && <Button onClick={this.handleLoalMore} />}
-      </Wrapper>
-    );
-  }
+      {status === 'loading' && <Loader />}
+      {showModal && (
+        <Modal imgUrl={largeImageUrl} onClose={toggleModal} status={status} />
+      )}
+      {loadMore === 0 && <Button onClick={handleLoalMore} />}
+      {error && <p>Error{error}</p>}
+    </Wrapper>
+  );
 }
