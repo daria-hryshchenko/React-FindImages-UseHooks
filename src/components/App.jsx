@@ -41,7 +41,7 @@ export default function App() {
   };
 
   const handleLoalMore = () => {
-    setPage(prevState => prevState.page + 1);
+    setPage(prevState => prevState + 1);
   };
 
   const handleLargeImageUrl = imgUtl => {
